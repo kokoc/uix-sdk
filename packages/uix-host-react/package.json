@@ -1,8 +1,9 @@
 {
   "name": "@adobe/uix-host-react",
-  "version": "0.6.5-0",
+  "version": "0.7.0-4-alpha",
   "description": "Tools for embedding UI Extensions into React apps",
   "author": "Adobe, Inc,",
+  "module": "dist/esm/index.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -15,9 +16,8 @@
   ],
   "bugs": "https://github.com/adobe/uix-sdk/issues",
   "dependencies": {
-    "@adobe/uix-core": "^0.6.5-0",
-    "@adobe/uix-host": "^0.6.5-0",
-    "penpal": "~6.2.2"
+    "@adobe/uix-core": "^0.7.0-4-alpha",
+    "@adobe/uix-host": "^0.7.0-4-alpha"
   },
   "files": [
     "README.md",
