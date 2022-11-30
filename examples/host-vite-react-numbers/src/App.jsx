@@ -20,13 +20,15 @@ import {
   ProgressCircle,
 } from "@adobe/react-spectrum";
 import { useExtensions } from "@adobe/uix-host-react";
-import React, { useEffect, useMemo, useReducer } from "react";
+import React, { useEffect, useMemo, useReducer, useRef } from "react";
 import { appReducer, initialState } from "./reducer.js";
 import NumberSuggestionForm from "./NumberSuggestionForm";
 import CommentsList from "./CommentsList";
 
 function App() {
   const [state, dispatch] = useReducer(appReducer, initialState);
+  const test = useRef(null);
+
   const dispatchA = useMemo(
     () =>
       (type, payload = {}) =>
@@ -56,9 +58,16 @@ function App() {
           });
         },
       },
+      test: {
+        getElement() {
+          return test.current;
+        }
+      }
     },
   }));
-
+  useEffect(() => {
+    test.current = document.getElementById("test")
+  })
   useEffect(() => {
     async function getExtensionComments({ id, apis }) {
       try {
@@ -110,6 +119,7 @@ function App() {
               <CommentsList comments={[...state.comments.values()]} />
             )}
           </View>
+          <textarea id="test" defaultValue="test value"></textarea>
         </Flex>
       </View>
     </Provider>

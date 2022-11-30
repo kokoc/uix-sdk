@@ -46,6 +46,7 @@ export function makeNamespaceProxy<ProxiedApi extends object>(
   invoke: RemoteMethodInvoker<unknown>,
   path: string[] = []
 ): RemoteHostApis<ProxiedApi> {
+
   const handler: ProxyHandler<Record<string, any>> = {
     get: (target, prop) => {
       if (typeof prop === "string") {
@@ -67,12 +68,17 @@ export function makeNamespaceProxy<ProxiedApi extends object>(
   if (path.length < 2) {
     return new Proxy<RemoteHostApis<ProxiedApi>>(target, handler);
   }
-  const invoker = (...args: unknown[]) =>
-    invoke({
+  const invoker = (...args: unknown[]) => {
+    console.log({
       path: path.slice(0, -1),
       name: path[path.length - 1],
       args,
     });
+    return invoke({
+      path: path.slice(0, -1),
+      name: path[path.length - 1],
+      args,
+    }) };
   return new Proxy<typeof invoker>(invoker, {
     ...handler,
     apply(target, _, args: unknown[]) {

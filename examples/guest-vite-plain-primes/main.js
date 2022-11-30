@@ -22,7 +22,14 @@ async function main() {
     debug: process.env.NODE_ENV !== "production",
     methods: {
       interestingNumbers: {
-        commentOn(n) {
+        async commentOn(n) {
+          const test = await uix.host.test.best.zest.quest.mest(4,15).fest(2,1);
+          // const element = await uix.host.test.getElement();
+          // console.log('HELLO FROM GUEST', element.value)
+          // //element.value = 4;
+          // await element.focus();
+          // await element.setRangeText('pumpurum');
+          // await element.setHTML('<h1>Test</h1>');
           const comments = getComments(n);
           record(n, comments);
           return comments;

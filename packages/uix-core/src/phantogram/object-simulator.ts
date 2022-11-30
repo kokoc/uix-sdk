@@ -35,19 +35,24 @@ export class ObjectSimulator implements Simulator {
     new WeakMap();
   private cleanupNotifier: CleanupNotifier;
   subject: RemoteSubject;
-  makeReceiver(fn: CallableFunction) {
+  makeReceiver(fn: CallableFunction, parent?: Object) {
     let fnTicket = this.receiverTicketCache.get(fn);
     if (!fnTicket) {
       fnTicket = {
         fnId: `${fn.name || "<anonymous>"}_${++this.fnCounter}`,
       };
-      const cleanup = receiveCalls(fn, fnTicket, new WeakRef(this.subject));
+      // Bind function to parent object if it exists
+      let boundFunction = fn;
+      if (parent) {
+        boundFunction = fn.bind(parent);
+      }
+      const cleanup = receiveCalls(boundFunction, fnTicket, new WeakRef(this.subject));
       this.subject.onOutOfScope(fnTicket, cleanup);
-      this.receiverTicketCache.set(fn, fnTicket);
+      this.receiverTicketCache.set(boundFunction, fnTicket);
     }
     return wrap(fnTicket);
   }
-  makeSender(message: DefMessage) {
+  makeSender(message: DefMessage, _?: Object) {
     const ticket = unwrap(message);
     /* istanbul ignore else: preopt */
     if (!this.senderCache.has(ticket)) {
@@ -60,7 +65,8 @@ export class ObjectSimulator implements Simulator {
     }
   }
   simulate<T>(localObject: T) {
-    return simulateFuncsRecursive<T>(this.makeReceiver, localObject);
+    const obj = simulateFuncsRecursive<T>(this.makeReceiver, localObject);
+    return obj;
   }
   materialize<T>(simulated: T) {
     return materializeFuncsRecursive<T>(this.makeSender, simulated);

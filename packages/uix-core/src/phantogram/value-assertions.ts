@@ -9,6 +9,14 @@ export function isPlainObject<T>(value: unknown): value is T & object {
   return proto === null || proto === Object.prototype;
 }
 
+export function isObjectWithPrototype<T>(value: unknown): value is T & { [key: string | symbol]: unknown } {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const proto = Reflect.getPrototypeOf(value);
+  return proto !== Object.prototype;
+}
+
 export function isPrimitive(value: unknown): value is Primitive {
   if (!value) {
     return true;

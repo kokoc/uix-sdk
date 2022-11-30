@@ -7,8 +7,10 @@ import {
   isIterable,
   isFunction,
   hasProp,
+  isObjectWithPrototype
 } from "./value-assertions";
 import { unwrap, isWrapped } from "./message-wrapper";
+import { stringLiteral } from "@babel/types";
 
 /**
  * Extract keys of T whose values are assignable to U.
@@ -65,34 +67,91 @@ function isDefMessage(value: unknown): value is DefMessage {
 }
 
 export function simulateFuncsRecursive<T>(
-  onFunction: (fn: CallableFunction) => DefMessage,
-  value: unknown
+  onFunction: (fn: CallableFunction, parent?: Object) => DefMessage,
+  value: any,
+  parent?: Object,
+  _refs: WeakSet<object> = new WeakSet()
 ): Simulated<T> {
+  //console.log(value, parent, typeof value, _refs, );
   if (isPrimitive(value)) {
     return value as Simulated<T>;
   }
   if (isFunction(value)) {
-    return onFunction(value) as Simulated<T>;
+    return onFunction(value, parent) as Simulated<T>;
   }
   if (isIterable(value)) {
     const outArray = [];
     for (const item of value) {
-      outArray.push(simulateFuncsRecursive(onFunction, item));
+      outArray.push(simulateFuncsRecursive(onFunction, item, undefined, _refs));
     }
     return outArray as Simulated<T>;
   }
+
   if (isPlainObject(value)) {
+    const zz:any = value;
+    if (_refs.has(value)) {
+      return "[[RECURSION]]" as Simulated<T>;
+    }
+    if (zz.tagName === 'IFRAME') {
+      return;
+    }
+
+    _refs.add(value);
     const outObj = {};
     for (const key of Reflect.ownKeys(value)) {
       Reflect.set(
         outObj,
         key,
-        simulateFuncsRecursive(onFunction, Reflect.get(value, key))
+        simulateFuncsRecursive(onFunction, Reflect.get(value, key), undefined, _refs)
       );
     }
     return outObj as Simulated<T>;
   }
-  throw new Error(`Bad value! ${Object.prototype.toString.call(value)}`);
+  if (isObjectWithPrototype(value)) {
+    if (_refs.has(value)) {
+      return "[[RECURSION]]" as Simulated<T>;
+    }
+    const zz:any = value;
+    if (zz.tagName === 'IFRAME') {
+      return;
+    }
+    if (Reflect.getPrototypeOf(zz) === Reflect.getPrototypeOf(window)) {
+      return;
+    }
+    if (Reflect.getPrototypeOf(zz) === Reflect.getPrototypeOf(document)) {
+      return;
+    }
+
+    _refs.add(value);
+    const getObjectKeys = (obj: Object): (string | symbol)[] => {
+      const result: Set<string | symbol> = new Set();
+      do {
+        if (Reflect.getPrototypeOf(obj) !== null) {
+          for (const prop of Object.getOwnPropertyNames(obj)) {
+            if (prop === 'constructor') {
+              continue;
+            }
+            result.add(prop);
+          }
+        }
+      } while (obj = Reflect.getPrototypeOf(obj));
+
+      return [...result];
+    }
+    const outObj = {};
+    const properties = getObjectKeys(value);
+    for (const key of properties) {
+      Reflect.set(
+        outObj,
+        key,
+        simulateFuncsRecursive(onFunction, Reflect.get(value, key), value, _refs)
+      );
+    }
+
+    return outObj as Simulated<T>;
+  }
+
+  //throw new Error(`Bad value! ${Object.prototype.toString.call(value)}`);
 }
 
 export function materializeFuncsRecursive<T>(
