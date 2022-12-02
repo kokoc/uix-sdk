@@ -69,10 +69,8 @@ function isDefMessage(value: unknown): value is DefMessage {
 export function simulateFuncsRecursive<T>(
   onFunction: (fn: CallableFunction, parent?: Object) => DefMessage,
   value: any,
-  parent?: Object,
-  _refs: WeakSet<object> = new WeakSet()
+  parent?: Object
 ): Simulated<T> {
-  //console.log(value, parent, typeof value, _refs, );
   if (isPrimitive(value)) {
     return value as Simulated<T>;
   }
@@ -82,47 +80,23 @@ export function simulateFuncsRecursive<T>(
   if (isIterable(value)) {
     const outArray = [];
     for (const item of value) {
-      outArray.push(simulateFuncsRecursive(onFunction, item, undefined, _refs));
+      outArray.push(simulateFuncsRecursive(onFunction, item));
     }
     return outArray as Simulated<T>;
   }
 
   if (isPlainObject(value)) {
-    const zz:any = value;
-    if (_refs.has(value)) {
-      return "[[RECURSION]]" as Simulated<T>;
-    }
-    if (zz.tagName === 'IFRAME') {
-      return;
-    }
-
-    _refs.add(value);
     const outObj = {};
     for (const key of Reflect.ownKeys(value)) {
       Reflect.set(
         outObj,
         key,
-        simulateFuncsRecursive(onFunction, Reflect.get(value, key), undefined, _refs)
+        simulateFuncsRecursive(onFunction, Reflect.get(value, key), value)
       );
     }
     return outObj as Simulated<T>;
   }
-  if (isObjectWithPrototype(value)) {
-    if (_refs.has(value)) {
-      return "[[RECURSION]]" as Simulated<T>;
-    }
-    const zz:any = value;
-    if (zz.tagName === 'IFRAME') {
-      return;
-    }
-    if (Reflect.getPrototypeOf(zz) === Reflect.getPrototypeOf(window)) {
-      return;
-    }
-    if (Reflect.getPrototypeOf(zz) === Reflect.getPrototypeOf(document)) {
-      return;
-    }
-
-    _refs.add(value);
+  if (isObjectWithPrototype(value) && !parent) {
     const getObjectKeys = (obj: Object): (string | symbol)[] => {
       const result: Set<string | symbol> = new Set();
       do {
@@ -144,7 +118,7 @@ export function simulateFuncsRecursive<T>(
       Reflect.set(
         outObj,
         key,
-        simulateFuncsRecursive(onFunction, Reflect.get(value, key), value, _refs)
+        simulateFuncsRecursive(onFunction, Reflect.get(value, key), value)
       );
     }
 

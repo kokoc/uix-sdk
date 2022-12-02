@@ -19,7 +19,8 @@ import type {
 } from "@adobe/uix-core";
 import {
   Emitter,
-  makeNamespaceProxy,
+  //makeNamespaceProxy,
+  makeProxy,
   phantogram,
   timeoutPromise,
   quietConsole,
@@ -178,8 +179,8 @@ export class Guest<
    * Promises which resolve to the value the Host method returns.
    * @public
    */
-  host: RemoteHostApis<Incoming> = makeNamespaceProxy<Incoming>(
-    async (address) => {
+  host: RemoteHostApis<Incoming> = makeProxy<Incoming>(
+    async (address: any) => {
       await this.hostConnectionPromise;
       try {
         const result = await timeoutPromise(

@@ -23,8 +23,16 @@ async function main() {
     methods: {
       interestingNumbers: {
         async commentOn(n) {
-          const test = await uix.host.test.best.zest.quest.mest(4,15).fest(2,1);
+          //const test = await uix.host.test.best.zest;
+          // const test = await uix.host.test.getTest();
+          // const closes = await test.closest('div');
+          // console.log(test.id, closes.className);
+          //console.log(await uix.host.test.getTest());
+          const tt = () => 5;
+          const hh = await uix.host.test.getTest(tt).closest('div').className;
+
           // const element = await uix.host.test.getElement();
+          // element.value = 'test'
           // console.log('HELLO FROM GUEST', element.value)
           // //element.value = 4;
           // await element.focus();

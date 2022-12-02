@@ -11,7 +11,7 @@ governing permissions and limitations under the License.
 */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { RemoteHostApis, RemoteMethodInvoker } from "./types.js";
+import { RemoteHostApis, RemoteMethodInvoker, HostMethodAddress } from "./types.js";
 
 /**
  * Build a fake object that turns "method calls" into RPC messages
@@ -42,47 +42,109 @@ import { RemoteHostApis, RemoteMethodInvoker } from "./types.js";
  *
  * @param invoke - Callback that receives address
  */
-export function makeNamespaceProxy<ProxiedApi extends object>(
-  invoke: RemoteMethodInvoker<unknown>,
-  path: string[] = []
+// export function makeNamespaceProxy<ProxiedApi extends object>(
+//   invoke: RemoteMethodInvoker<unknown>,
+//   path: string[] = []
+// ): RemoteHostApis<ProxiedApi> {
+//   console.log('THIS IS GLOBAL PATH', path)
+//   const handler: ProxyHandler<Record<string, any>> = {
+//     get: (target, prop) => {
+//       console.log(prop, typeof prop);
+//       if (typeof prop === "string") {
+//         if (!Reflect.has(target, prop)) {
+//           const next = makeNamespaceProxy(invoke, path.concat(prop));
+//           Reflect.set(target, prop, next);
+//         }
+//         return Reflect.get(target, prop) as unknown;
+//       } else {
+//         throw new Error(
+//           `Cannot look up a symbol ${String(prop)} on a host connection proxy.`
+//         );
+//       }
+//     },
+//   };
+//   const target = {} as unknown as RemoteHostApis<ProxiedApi>;
+//   // Only trap the apply if there's at least two levels of namespace.
+//   // uix.host() is not a function, and neither is uix.host.bareMethod().
+//   if (path.length < 2) {
+//     return new Proxy<RemoteHostApis<ProxiedApi>>(target, handler);
+//   }
+//   const invoker = (...args: unknown[]) => {
+//     console.log('INVOKER PARAMS', {
+//       path: path.slice(0, -1),
+//       name: path[path.length - 1],
+//       args,
+//     })
+//     return invoke({
+//       path: path.slice(0, -1),
+//       name: path[path.length - 1],
+//       args,
+//     }) };
+//   return new Proxy<typeof invoker>(invoker, {
+//     ...handler,
+//     apply(target, _, args: unknown[]) {
+//       console.log('APPLY', target, args)
+//       return target(...args);
+//       //const result: any = await target(...args)
+//       // console.log('APPLY RESULT', result, typeof result['closest'])
+//       //return makeProxy(invoker, {});
+//     },
+//   }) as unknown as typeof target;
+// }
+class AddressBuilder {
+  currentPath: string[] = [];
+  addressCache: HostMethodAddress[];
+
+  addPath(chunk: string) {
+    this.currentPath.push(chunk);
+  }
+
+  addMethod(...args: unknown[]) {
+    this.addressCache.push({
+      path: this.currentPath.slice(0, -1),
+      name: this.currentPath[this.currentPath.length - 1],
+      args: args
+    });
+    this.currentPath = [];
+  }
+  compile(): HostMethodAddress[] {
+    return this.addressCache;
+  }
+}
+
+export function makeProxy<ProxiedApi extends object>(
+    invoke: RemoteMethodInvoker<unknown>,
+    paths: string[] = [],
+    argumentList: unknown[] | undefined = undefined
 ): RemoteHostApis<ProxiedApi> {
 
-  const handler: ProxyHandler<Record<string, any>> = {
-    get: (target, prop) => {
-      if (typeof prop === "string") {
-        if (!Reflect.has(target, prop)) {
-          const next = makeNamespaceProxy(invoke, path.concat(prop));
-          Reflect.set(target, prop, next);
-        }
-        return Reflect.get(target, prop) as unknown;
-      } else {
-        throw new Error(
-          `Cannot look up a symbol ${String(prop)} on a host connection proxy.`
-        );
-      }
-    },
-  };
-  const target = {} as unknown as RemoteHostApis<ProxiedApi>;
-  // Only trap the apply if there's at least two levels of namespace.
-  // uix.host() is not a function, and neither is uix.host.bareMethod().
-  if (path.length < 2) {
-    return new Proxy<RemoteHostApis<ProxiedApi>>(target, handler);
-  }
+  console.log('NEW PATHS', paths);
   const invoker = (...args: unknown[]) => {
-    console.log({
-      path: path.slice(0, -1),
-      name: path[path.length - 1],
-      args,
-    });
     return invoke({
-      path: path.slice(0, -1),
-      name: path[path.length - 1],
-      args,
-    }) };
+      path: ['test'],
+      args: [],
+      name: "getTest"
+    })
+  };
   return new Proxy<typeof invoker>(invoker, {
-    ...handler,
-    apply(target, _, args: unknown[]) {
-      return target(...args);
-    },
-  }) as unknown as typeof target;
+      get: function(target, property): any {
+        console.log('PROP', property);
+        if (typeof property === "string") {
+          if (!Reflect.has(target, property)) {
+            paths.push(property)
+            const next = makeProxy(invoke, paths);
+            Reflect.set(target, property, next);
+          }
+          return Reflect.get(target, property) as unknown;
+        } else {
+          throw new Error(
+            `Cannot look up a symbol ${String(property)} on a host connection proxy.`
+          );
+        }
+      },
+      apply: function(target, method, argumentsList): any {
+        console.log('APPLY', target, method, argumentsList);
+        return makeProxy(invoke, paths, argumentsList);
+      }
+  }) as unknown as RemoteHostApis<ProxiedApi>;
 }

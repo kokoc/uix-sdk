@@ -42,6 +42,11 @@ function App() {
       interestingNumbers: ["commentOn"],
     },
     provides: {
+      test: {
+        async getTest() {
+          return document.getElementById('test');
+        }
+      },
       discussion: {
         introduce(source, greeting) {
           dispatchA("join", {
@@ -57,11 +62,6 @@ function App() {
             message,
           });
         },
-      },
-      test: {
-        getElement() {
-          return test.current;
-        }
       }
     },
   }));
