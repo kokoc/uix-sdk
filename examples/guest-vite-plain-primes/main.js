@@ -29,7 +29,13 @@ async function main() {
           // console.log(test.id, closes.className);
           //console.log(await uix.host.test.getTest());
           const tt = () => 5;
-          const hh = await uix.host.test.getTest(tt).closest('div').className;
+          const b =await uix.host.test.getTest(tt);
+          console.log('ID ', b.id);
+          //const hh = await uix.host.test.getTest(tt).closest('div').className;
+          // const ta = await uix.host.test.getTest(tt);
+          // const div = ta.closest('div');
+          //console.log('DIV CLASS NAME IS ', hh, hh.className, hh.className.best)
+          //console.log('DIV2 CLASS NAME IS ', div, div.className)
 
           // const element = await uix.host.test.getElement();
           // element.value = 'test'

@@ -191,8 +191,9 @@ export class Guest<
       } catch (e) {
         const error =
           e instanceof Error ? e : new Error(e as unknown as string);
+        const methodName = address.map((el: any) => el.path).flat()
         const methodError = new Error(
-          `Host method call host.${address.path.join(".")}() failed: ${
+          `Host method call host.${methodName.join(".")}() failed: ${
             error.message
           }`
         );

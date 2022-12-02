@@ -145,7 +145,7 @@ export interface HostMethodAddress<Args = unknown[]> {
  * the callback is expected to return a Promise for the return value.
  * @internal
  */
-export type RemoteMethodInvoker<T> = (address: HostMethodAddress) => Promise<T>;
+export type RemoteMethodInvoker<T> = (address: HostMethodAddress[]) => Promise<T>;
 
 /**
  * Interface for decoupling Port from GuestServer.host

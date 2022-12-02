@@ -93,7 +93,7 @@ import { RemoteHostApis, RemoteMethodInvoker, HostMethodAddress } from "./types.
 // }
 class AddressBuilder {
   currentPath: string[] = [];
-  addressCache: HostMethodAddress[];
+  addressCache: HostMethodAddress[] = [];
 
   addPath(chunk: string) {
     this.currentPath.push(chunk);
@@ -107,32 +107,37 @@ class AddressBuilder {
     });
     this.currentPath = [];
   }
-  compile(): HostMethodAddress[] {
-    return this.addressCache;
+  compileFlush(): HostMethodAddress[] {
+    const result = this.addressCache;
+    this.addressCache = [];
+    this.currentPath = [];
+    return result;
   }
 }
 
 export function makeProxy<ProxiedApi extends object>(
     invoke: RemoteMethodInvoker<unknown>,
-    paths: string[] = [],
-    argumentList: unknown[] | undefined = undefined
+    addressBuilder: AddressBuilder = new AddressBuilder()
 ): RemoteHostApis<ProxiedApi> {
 
-  console.log('NEW PATHS', paths);
-  const invoker = (...args: unknown[]) => {
-    return invoke({
-      path: ['test'],
-      args: [],
-      name: "getTest"
-    })
-  };
-  return new Proxy<typeof invoker>(invoker, {
+  // const invoker = (...args: unknown[]) => {
+  //   return invoke({
+  //     path: ['test'],
+  //     args: [],
+  //     name: "getTest"
+  //   })
+  // };
+  return new Proxy(() => {}, {
       get: function(target, property): any {
-        console.log('PROP', property);
+        console.log('PROP', property)
         if (typeof property === "string") {
-          if (!Reflect.has(target, property)) {
-            paths.push(property)
-            const next = makeProxy(invoke, paths);
+          if (property === 'then') {
+            const result = invoke(addressBuilder.compileFlush())
+            Reflect.set(target, property, result);
+            return result;
+          } else if (!Reflect.has(target, property)) {
+            addressBuilder.addPath(property);
+            const next = makeProxy(invoke, addressBuilder);
             Reflect.set(target, property, next);
           }
           return Reflect.get(target, property) as unknown;
@@ -143,8 +148,9 @@ export function makeProxy<ProxiedApi extends object>(
         }
       },
       apply: function(target, method, argumentsList): any {
-        console.log('APPLY', target, method, argumentsList);
-        return makeProxy(invoke, paths, argumentsList);
+        console.log('METHOD CALL + ARGUMENTS', argumentsList)
+        addressBuilder.addMethod(argumentsList)
+        return makeProxy(invoke, addressBuilder);
       }
   }) as unknown as RemoteHostApis<ProxiedApi>;
 }

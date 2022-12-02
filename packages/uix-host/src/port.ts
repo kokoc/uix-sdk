@@ -126,6 +126,8 @@ const defaultOptions = {
   debug: false,
 };
 
+const UIX_HOST_NAMESPACE = 'uix.host';
+
 /**
  * A Port is the Host-maintained  object representing an extension running as a
  * guest. It exposes methods registered by the Guest, and can provide Host
@@ -339,8 +341,8 @@ export class Port<GuestApi>
         },
         {
           getSharedContext: () => this.sharedContext,
-          invokeHostMethod: (address: HostMethodAddress) =>
-            this.invokeHostMethod(address),
+          invokeHostMethod: (addresses: HostMethodAddress[]) =>
+            this.invokeHostMethod(addresses),
         }
       ) as Promise<GuestProxyWrapper>,
       destroy() {},
@@ -373,10 +375,14 @@ export class Port<GuestApi>
 
   private getHostMethodCallee<T = unknown>(
     { name, path }: HostMethodAddress,
-    methodSource: RemoteHostApis
+    methodSource: RemoteHostApis,
+    prefix?: string
   ): RemoteHostApis<VirtualApi> {
-    const dots = (level: number) =>
-      `uix.host.${path.slice(0, level).join(".")}`;
+    const dots = (level: number) => {
+      return prefix ?
+        `${prefix}.${path.slice(0, level).join(".")}` :
+        `${path.slice(0, level).join(".")}`;
+    }
     const methodCallee = path.reduce((current, prop, level) => {
       this.assert(
         Reflect.has(current, prop),
@@ -400,34 +406,47 @@ export class Port<GuestApi>
     return methodCallee;
   }
 
-  private invokeHostMethod<T = unknown>(
-    address: HostMethodAddress,
+  private async invokeHostMethod<T = unknown>(
+    address: HostMethodAddress[],
     privateMethods?: RemoteHostApis
-  ): T {
-    const { name, path, args = [] } = address;
-    this.assert(name && typeof name === "string", () => "Method name required");
-    this.assert(
-      path.length > 0,
-      () =>
-        `Cannot call a method directly on the host; ".${name}()" must be in a namespace.`
-    );
-    let methodCallee;
-    if (privateMethods) {
-      try {
-        methodCallee = this.getHostMethodCallee(address, privateMethods);
-      } catch (e) {
-        this.logger.warn("Private method not found!", address);
+  ): Promise<T> {
+    var result: any = undefined;
+    for (let i = 0; i < address.length; i++) {
+      const { name, path, args = [] } = address[i];
+      this.assert(name && typeof name === "string", () => "Method name required");
+      // this.assert(
+      //   path.length > 0 && typeof result === "object",
+      //   () =>
+      //     `Cannot call a method directly on the host; ".${name}()" must be in a namespace.`
+      // );
+      let methodCallee;
+
+      if (typeof result === "object") {
+        const method = result[name];
+        result = await method.apply(result, ...args);
+        continue;
       }
+
+      if (privateMethods) {
+        try {
+          methodCallee = this.getHostMethodCallee(address[i], privateMethods, UIX_HOST_NAMESPACE);
+        } catch (e) {
+          this.logger.warn("Private method not found!", address[i]);
+        }
+      }
+      if (!methodCallee) {
+        methodCallee = this.getHostMethodCallee(address[i], this.hostApis, UIX_HOST_NAMESPACE);
+      }
+
+      const method = methodCallee[name] as (...args: unknown[]) => T;
+      this.emit("beforecallhostmethod", { guestPort: this, name, path, args });
+      result = await method.apply(methodCallee, [
+        { id: this.id, url: this.url },
+        ...args,
+      ]) as T;
     }
-    if (!methodCallee) {
-      methodCallee = this.getHostMethodCallee(address, this.hostApis);
-    }
-    const method = methodCallee[name] as (...args: unknown[]) => T;
-    this.emit("beforecallhostmethod", { guestPort: this, name, path, args });
-    return method.apply(methodCallee, [
-      { id: this.id, url: this.url },
-      ...args,
-    ]) as T;
+
+    return result;
   }
 
   // #endregion Private Methods (6)
