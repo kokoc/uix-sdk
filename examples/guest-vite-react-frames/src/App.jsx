@@ -24,15 +24,13 @@ import React, { useEffect, useMemo, useReducer, useState } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 
-
 const Registrar = () => {
   const [connection, setConnection] = useState(undefined);
-
   useEffect(() => {
     const init = async () => {
       const connection = await register({
         id: "First frame",
-        debug: process.env.NODE_ENV !== "production",
+        debug: true,
         methods: {
           frame: {
             getUrls: () => ["/frame", "/frame", "/frame"],
@@ -62,8 +60,9 @@ const Display = () => {
     }
     init().catch((e) => console.log(e));
   }, []);
-  return <><div style={{width: 4000, height: 400}}>Here is my private number is {privateNumber}</div></>
+  return <><div style={{width: 4000, height: 400}}>My private number is {privateNumber}</div></>
 }
+
 
 const router = createBrowserRouter([
   {
@@ -77,6 +76,10 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
+  const slug = document.getElementById("script-container").src.split('#').pop();
+  return slug === "/frame" ? <Display /> : <Registrar />;
+
+
   return <RouterProvider router={router} />
 }
 

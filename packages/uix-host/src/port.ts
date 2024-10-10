@@ -428,11 +428,14 @@ export class Port<GuestApi = unknown>
     // at least this is necessary
     normalizeIframe(iframe);
     this.logger.log("attachFrame", iframe);
+    const origin = this.url.href.match(/\.(js|jsx)/)
+      ? self.origin
+      : this.url.origin;
     return connectIframe<T>(
       iframe,
       {
         logger: this.logger,
-        targetOrigin: this.url.origin,
+        targetOrigin: origin,
         timeout: this.timeout,
       },
       {
@@ -445,21 +448,50 @@ export class Port<GuestApi = unknown>
     );
   }
 
-  private async connect() {
+  private async makeIframe() {
+    const isJsExtension = this.url.href.match(/\.(js|jsx)/);
     const serverFrame =
       this.runtimeContainer.ownerDocument.createElement("iframe");
     normalizeIframe(serverFrame);
     serverFrame.setAttribute("aria-hidden", "true");
-    serverFrame.setAttribute("src", this.url.href);
-    this.guestServerFrame = serverFrame;
-    this.runtimeContainer.appendChild(serverFrame);
+
+    if (isJsExtension) {
+      const content = `
+      <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Extension Registration Frame</title>
+    <script type="module" id="script-container" src="${this.url.href}"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+  </body>
+</html>
+`;
+      serverFrame.setAttribute("srcDoc", content);
+      // serverFrame.setAttribute("sandbox", "allow-same-origin allow-scripts");
+    } else {
+      serverFrame.setAttribute("src", this.url.href);
+    }
+
+    return serverFrame;
+  }
+
+  private async connect() {
+    this.guestServerFrame = await this.makeIframe();
+    this.runtimeContainer.appendChild(this.guestServerFrame);
     if (this.logger) {
       this.logger.info(
         `Guest ${this.id} attached iframe of ${this.url.href}`,
         this
       );
     }
-    this.guestServer = await this.attachFrame<GuestProxyWrapper>(serverFrame);
+    this.guestServer = await this.attachFrame<GuestProxyWrapper>(
+      this.guestServerFrame
+    );
     this.isLoaded = true;
     if (this.logger) {
       this.logger.info(

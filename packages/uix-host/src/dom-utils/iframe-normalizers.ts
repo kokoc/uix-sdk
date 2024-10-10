@@ -23,7 +23,7 @@ type SandboxPermission =
   | "pointer-lock"
   | "popups"
   | "presentation"
-  | "same-origin"
+  //| "same-origin"
   | "scripts"
   | "storage-access-by-user-activation"
   | "top-navigation-by-user-activation";

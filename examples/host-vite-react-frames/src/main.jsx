@@ -31,13 +31,17 @@ async function main() {
           {}
         )
       );
-
+  const test = async () => {
+    //const result = await extensionsProvider();
+    const result = {test: 'http://localhost:4040/assets/index.js'};
+    return result;
+  }
   ReactDOM.render(
     <React.StrictMode>
       <Extensible
         appName="Testing frames"
-        debug={process.env.NODE_ENV !== "production"}
-        extensionsProvider={extensionsProvider}
+        debug={true}
+        extensionsProvider={test}
       >
         <App />
       </Extensible>

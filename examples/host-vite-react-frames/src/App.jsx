@@ -26,7 +26,7 @@ function App() {
   const [urls, setUrls] = useState(undefined);
 
   const { extensions } = useExtensions(() => ({
-    updateOn: "all",
+    updateOn: "each",
     requires: {
       frame: ["getUrls"]
     }
@@ -62,7 +62,6 @@ function App() {
             }
           };
           result.push(<GuestUIFrame key={counter} guestId={urls[idx].id} src={urls[idx].urls[urlIdx]} privateMethods={methods}/>)
-
         }
       }
     }

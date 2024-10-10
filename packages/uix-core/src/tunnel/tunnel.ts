@@ -358,7 +358,7 @@ export class Tunnel extends EventEmitter {
     if (!Number.isSafeInteger(timeoutMs)) {
       errorMessage += badTimeout;
     }
-    if (config.targetOrigin !== "*") {
+    if (config.targetOrigin !== "*" && config.targetOrigin !== null) {
       try {
         new URL(config.targetOrigin);
       } catch (e) {

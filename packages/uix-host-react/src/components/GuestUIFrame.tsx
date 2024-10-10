@@ -75,6 +75,10 @@ const defaultIFrameProps: FrameProps = {
 
 const defaultSandbox = "allow-scripts allow-forms allow-same-origin";
 
+const isJsExtension = (href: string): boolean => {
+  return !!href.match(/\.(js|jsx)$/);
+};
+
 /**
  * An iframe that attaches to a running GuestServer, to display visible UI pages
  * delivered by the Extension server.
@@ -99,6 +103,8 @@ export const GuestUIFrame = ({
     return null;
   }
   const guest = host.guests.get(guestId);
+  const jsExt = isJsExtension(guest.url.href);
+  //const frameUrl = jsExt ? new URL(guest.url.href + "#" + src) : new URL(src, guest.url.href);
   const frameUrl = new URL(src, guest.url.href);
 
   useEffect(() => {
@@ -158,11 +164,33 @@ export const GuestUIFrame = ({
     }
   }, [ref.current, guest.id, onResize]);
 
+  const srcAttr = jsExt
+    ? {
+        srcDoc: `
+    <!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Extension Registration Frame</title>
+    <script type="module" id="script-container" src="${
+      new URL(guest.url.href + "#" + src).href
+    }"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+  </body>
+</html>
+    `,
+      }
+    : { src: frameUrl.href };
+
   return (
     <iframe
       {...defaultIFrameProps}
       ref={ref}
-      src={frameUrl.href}
+      {...srcAttr}
       name={`uix-guest-${guest.id}`}
       sandbox={
         sandbox
